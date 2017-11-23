@@ -20,7 +20,7 @@ THREE.GLTFLoader = ( function () {
 
 		crossOrigin: 'Anonymous',
 
-		load: function ( url, onLoad, onProgress, onError ) {
+		load: function ( url, options, onLoad, onProgress, onError ) {
 
 			var scope = this;
 
@@ -34,7 +34,7 @@ THREE.GLTFLoader = ( function () {
 
 				try {
 
-					scope.parse( data, path, onLoad, onError );
+					scope.parse( data, path, options, onLoad, onError );
 
 				} catch ( e ) {
 
@@ -66,7 +66,7 @@ THREE.GLTFLoader = ( function () {
 
 		},
 
-		parse: function ( data, path, onLoad, onError ) {
+		parse: function ( data, path, options, onLoad, onError ) {
 
 			var content;
 			var extensions = {};
@@ -139,7 +139,8 @@ THREE.GLTFLoader = ( function () {
 
 				path: path || this.path || '',
 				crossOrigin: this.crossOrigin,
-				manager: this.manager
+				manager: this.manager,
+				budget: options.budget
 
 			} );
 
@@ -1015,7 +1016,9 @@ THREE.GLTFLoader = ( function () {
 
 	/* UTILITY FUNCTIONS */
 
-	function _each( object, callback, thisObj ) {
+	function _each( object, callback, maxBudget, thisObj ) {
+
+		maxBudget = maxBudget || Infinity;
 
 		if ( ! object ) {
 
@@ -1023,18 +1026,72 @@ THREE.GLTFLoader = ( function () {
 
 		}
 
-		var results;
-		var fns = [];
+		return new Promise( function ( resolve ) {
 
-		if ( Object.prototype.toString.call( object ) === '[object Array]' ) {
+			var fns = [];
+			var isArray = Object.prototype.toString.call( object ) === '[object Array]';
+			var results = isArray ? [] : {};
 
-			results = [];
+			if ( isArray ) {
 
-			var length = object.length;
+				_iterateInChunks.call( this, object, function ( id ) {
 
-			for ( var idx = 0; idx < length; idx ++ ) {
+					return id;
 
-				var value = callback.call( thisObj || this, object[ idx ], idx );
+				} );
+
+			} else {
+
+				var keys = Object.keys( object );
+				_iterateInChunks.call( this, keys, function ( id ) {
+
+					return keys[ id ];
+
+				} );
+
+			}
+
+			function _iterateInChunks( keyArray, getKey ) {
+
+				var idx = 0;
+				var length = keyArray.length;
+
+				requestAnimationFrame( function _doChunk( offset ) {
+
+					var budget = performance.now() - offset;
+
+					while ( budget < maxBudget && idx < length ) {
+
+						var key = getKey( idx );
+
+						if ( object.hasOwnProperty( key ) ) {
+
+							_do.call( this, callback, object, key );
+
+						}
+
+						idx ++;
+						budget = performance.now() - offset;
+
+					}
+
+					if ( idx < length ) {
+
+						requestAnimationFrame( _doChunk.bind( this ) );
+
+					} else {
+
+						_done();
+
+					}
+
+				}.bind( this ) );
+
+			}
+
+			function _do( callback, object, key ) {
+
+				var value = _nextRAF( callback, this, object[ key ], key );
 
 				if ( value ) {
 
@@ -1044,11 +1101,11 @@ THREE.GLTFLoader = ( function () {
 
 							results[ key ] = value;
 
-						}.bind( this, idx ) );
+						}.bind( this, key ) );
 
 					} else {
 
-						results[ idx ] = value;
+						results[ key ] = value;
 
 					}
 
@@ -1058,47 +1115,31 @@ THREE.GLTFLoader = ( function () {
 
 			}
 
-		} else {
+			function _nextRAF( callback, thisObj, value, key ) {
 
-			results = {};
+				return new Promise( function ( resolve ) {
 
-			for ( var key in object ) {
+					window.requestAnimationFrame( function () {
 
-				if ( object.hasOwnProperty( key ) ) {
+						resolve( callback.call( thisObj, value, key ) );
 
-					var value = callback.call( thisObj || this, object[ key ], key );
+					} );
 
-					if ( value ) {
-
-						if ( value instanceof Promise ) {
-
-							value = value.then( function ( key, value ) {
-
-								results[ key ] = value;
-
-							}.bind( this, key ) );
-
-						} else {
-
-							results[ key ] = value;
-
-						}
-
-						fns.push( value );
-
-					}
-
-				}
+				} );
 
 			}
 
-		}
+			function _done() {
 
-		return Promise.all( fns ).then( function () {
+				Promise.all( fns ).then( function () {
 
-			return results;
+					resolve( results );
 
-		} );
+				} );
+
+			}
+
+		}.bind( thisObj || this ) );
 
 	}
 
@@ -1347,7 +1388,7 @@ THREE.GLTFLoader = ( function () {
 
 			return dependency;
 
-		} );
+		}, this.options.budget );
 
 	};
 
@@ -1582,7 +1623,7 @@ THREE.GLTFLoader = ( function () {
 
 			} );
 
-		} );
+		}, this.options.budget );
 
 	};
 
@@ -1875,11 +1916,13 @@ THREE.GLTFLoader = ( function () {
 
 			} );
 
-		} );
+		}, parser.options.budget );
 
 	};
 
 	GLTFParser.prototype.loadGeometries = function ( primitives ) {
+
+		var parser = this;
 
 		return this._withDependencies( [
 
@@ -1956,7 +1999,7 @@ THREE.GLTFLoader = ( function () {
 
 				return geometry;
 
-			} );
+			}, parser.options.budget );
 
 		} );
 
@@ -1967,7 +2010,7 @@ THREE.GLTFLoader = ( function () {
 	 */
 	GLTFParser.prototype.loadMeshes = function () {
 
-		var scope = this;
+		var parser = this;
 		var json = this.json;
 		var extensions = this.extensions;
 
@@ -1984,7 +2027,7 @@ THREE.GLTFLoader = ( function () {
 
 				var primitives = meshDef.primitives || [];
 
-				return scope.loadGeometries( primitives ).then( function ( geometries ) {
+				return parser.loadGeometries( primitives ).then( function ( geometries ) {
 
 					for ( var i = 0; i < primitives.length; i ++ ) {
 
@@ -2101,7 +2144,7 @@ THREE.GLTFLoader = ( function () {
 
 				} );
 
-			} );
+			}, parser.options.budget );
 
 		} );
 
@@ -2147,6 +2190,7 @@ THREE.GLTFLoader = ( function () {
 
 	GLTFParser.prototype.loadSkins = function () {
 
+		var parser = this;
 		var json = this.json;
 
 		return this._withDependencies( [
@@ -2164,7 +2208,7 @@ THREE.GLTFLoader = ( function () {
 
 				return _skin;
 
-			} );
+			}, parser.options.budget );
 
 		} );
 
@@ -2172,6 +2216,7 @@ THREE.GLTFLoader = ( function () {
 
 	GLTFParser.prototype.loadAnimations = function () {
 
+		var parser = this;
 		var json = this.json;
 
 		return this._withDependencies( [
@@ -2289,7 +2334,7 @@ THREE.GLTFLoader = ( function () {
 
 				return new THREE.AnimationClip( name, undefined, tracks );
 
-			} );
+			}, parser.options.budget );
 
 		} );
 
@@ -2387,7 +2432,7 @@ THREE.GLTFLoader = ( function () {
 
 				}
 
-			} ).then( function ( __nodes ) {
+			}, scope.options.budget ).then( function ( __nodes ) {
 
 				return _each( __nodes, function ( node, nodeIndex ) {
 
@@ -2495,7 +2540,7 @@ THREE.GLTFLoader = ( function () {
 
 					return node;
 
-				} );
+				}, scope.options.budget );
 
 			} );
 
@@ -2505,6 +2550,7 @@ THREE.GLTFLoader = ( function () {
 
 	GLTFParser.prototype.loadScenes = function () {
 
+		var scope = this;
 		var json = this.json;
 		var extensions = this.extensions;
 
@@ -2577,7 +2623,7 @@ THREE.GLTFLoader = ( function () {
 
 				return _scene;
 
-			} );
+			}, scope.options.budget );
 
 		} );
 
