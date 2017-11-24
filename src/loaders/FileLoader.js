@@ -72,6 +72,7 @@ Object.assign( FileLoader.prototype, {
 
 			data = window.decodeURIComponent( data );
 
+			// XXX: Bottleneck
 			if ( isBase64 ) data = window.atob( data );
 
 			try {

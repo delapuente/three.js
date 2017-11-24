@@ -74,6 +74,8 @@
 		<div>
 			Model
 			<select id="scenes_list" size="1" onchange="selectScene();" ondblclick="selectScene();"></select>
+			In chunks of (0 to disable): <input id="budget" type="input" value="0"></input> ms.
+			<button onclick="selectScene();">Reload</button>
 		</div>
 		<div>
 			Camera
@@ -223,8 +225,9 @@
 				var loadStartTime = performance.now();
 				var status = document.getElementById("status");
 				status.innerHTML = "Loading...";
+				var budget = document.getElementById("budget");
 
-				loader.load( url, function(data) {
+				loader.load( url, { budget: parseInt(budget.value, 10) }, function(data) {
 
 					gltf = data;
 
@@ -423,6 +426,36 @@
 			}
 
 			var sceneList = [
+				{
+					name : 'The Long Tomorrow',
+					url : './models/gltf/TheLongTomorrow/model.glb',
+					cameraPos: new THREE.Vector3(-2, 4, 2.3),
+					objectScale: new THREE.Vector3(1, 1, 1),
+					objectRotation: new THREE.Euler(0, 60, 0),
+					addLights:true,
+					shadows:true,
+					extensions: ['glTF']
+				},
+				{
+					name : 'Robot',
+					url : './models/gltf/Robot/model.gltf',
+					cameraPos: new THREE.Vector3(-2, 4, 2.3),
+					objectScale: new THREE.Vector3(1, 1, 1),
+					objectRotation: new THREE.Euler(0, 90, 0),
+					addLights:true,
+					shadows:true,
+					extensions: ['glTF']
+				},
+				{
+					name : 'Thor and the Midgard Serpent',
+					url : './models/gltf/ThorAndTheMidgardSerpent/scene.gltf',
+					cameraPos: new THREE.Vector3(-45, 19, 54),
+					objectScale: new THREE.Vector3(0.01, 0.01, 0.01),
+					objectRotation: new THREE.Euler(0, 90, 0),
+					addLights:true,
+					shadows:true,
+					extensions: ['glTF']
+				},
 				{
 					name : 'BoomBox (PBR)', url : './models/gltf/BoomBox/%s/BoomBox.gltf',
 					cameraPos: new THREE.Vector3(0.02, 0.01, 0.03),
