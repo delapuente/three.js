@@ -1,4 +1,7 @@
 var files = {
+	"ecs": [
+		"ecs_syntax"
+	],
 	"webgl": [
 		"webgl_animation_cloth",
 		"webgl_animation_keyframes_json",
