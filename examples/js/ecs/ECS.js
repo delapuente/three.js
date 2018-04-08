@@ -1,210 +1,302 @@
-var ECS = THREE.ECS = {};
 
-var Finder = ECS.Finder = function ( entities, systems ) {
+class Ecs {
 
-};
+}
 
-Finder.prototype = {
-	constructor: Finder,
+class Entity {
 
-	withChanging: function () {
-		return {
-			forEach: function () {  }
-		};
-	}
-};
+}
 
-ECS.getDefaultFinder = function ( entities, systems ) {
-	return new Finder(entities, systems);
-};
+class Component {
 
-var Ecs = ECS.Ecs = function () {
-	this._entities = [];
-	this._systems = [];
-	this._finder = THREE.ECS.getDefaultFinder( this._entities, this._systems );
-};
+}
 
-Ecs.prototype = {
-	constructor: Scene,
+class System {
 
-	add: function ( entity, parent=null ) {
-		if ( parent ) { parent.add( entity ); }
-		this._entities.push(entity);
-		this._systems.forEach( function ( system ) {
-			system.onHierarchyUpdate && system.onHierarchyUpdate( 'added', this, entity );
-		} );
-	},
-
-	addSystem: function (system) {
-		this._systems.push(system);
-		system.entities = this._finder;
-		system.scene = this;
-		system.init();
-	},
-
-	tick: function (timestamp) {
-		this._systems.forEach( function ( system ) {
-			system.onTick && system.onTick( timestamp );
-		} );
-	}
-};
-
-var Entity = ECS.Entity = function () {
-	this._components = [];
-};
-
-Entity.prototype = {
-	constructor: Entity,
-
-	addComponent: function ( component ) {
-		this._components.push( component );
-	}
-};
-
-ECS.components = {};
-ECS.systems = {};
-
-var Position = ECS.components.Position = function ( x, y, z ) {
-	this.x = x;
-	this.y = y;
-	this.z = z;
-};
-
-var Rotation = ECS.components.Rotation = function ( x, y, z ) {
-	this.x = x;
-	this.y = y;
-	this.z = z;
-	this.order = 'XYZ';
-};
-
-var Scale = ECS.components.Scale = function ( x, y, z ) {
-	this.x = x;
-	this.y = y;
-	this.z = z;
-};
-
-var Mesh = ECS.components.Mesh = function () {
-
-};
-
-var BoxGeometry = ECS.components.BoxGeometry = function ( width, height, depth ) {
-	this.width = width;
-	this.height = height;
-	this.depth = depth;
-};
-
-var MeshNormalMaterial = ECS.components.MeshNormalMaterial = function () {
-
-};
-
-var PerspectiveCamera = ECS.components.PerspectiveCamera = function ( fov, aspect, near, far ) {
-	this.fov = fov;
-	this.aspect = aspect;
-	this.near = near;
-	this.far = far;
-};
-
-var CartesianSpace = ECS.systems.CartesianSpace = function ( ) {
-	this._root = new THREE.Scene();
-	this._entityToObject3DMap = new Map();
-};
-
-CartesianSpace.prototype = {
-
-	init: function () {
-		this._entityToObject3DMap[ this.scene ] = this._root;
-		this._changedSpatialEntities = this.entities.withChanging([Position, Rotation, Scale]);
-	},
-
-	onHierarchyUpdate: function ( operation, parent, entity ) {
-		if ( operation === 'added' ) {
-			this._addToSceneGraph( parent, entity );
-		}
-	},
-
-	onChanges: function () {
-		this._changedSpatialEntities.forEach( function ( entity ) {
-			var object3d = this._findObjectForEntity( entity );
-			this._updateTransform( object3d, entity );
-		}, this );
-	},
-
-	getThreeScene: function () {
-		return this._root;
-	},
-
-	_addToSceneGraph: function ( parent, entity ) {
-		var parentObject = this._findObjectForEntity( parent );
-		var object3d = new THREE.Object3D();
-
-		parentObject.add( object3d );
-		this._entityToObject3DMap.add( entity, object3d );
-
-		entity.children.forEach( function ( child ) {
-			this._addToSceneGraph( entity, child );
-		}, this );
-	},
-
-	_findObjectForEntity: function ( entity ) {
-		return this._entityToObject3DMap.get( entity );
-	},
-
-	_updateTransform: function ( object3d, entity ) {
-		var position = entity.getComponent( Position );
-		var rotation = entity.getComponent( Rotation );
-		var scale = entity.getComponent( Scale );
-		object3d.position.x = position.x;
-		object3d.position.y = position.y;
-		object3d.position.z = position.z;
-		object3d.rotation.x = rotation.x;
-		object3d.rotation.y = rotation.y;
-		object3d.rotation.z = rotation.z;
-		object3d.rotation.order = rotation.order;
-		object3d.scale.x = scale.x;
-		object3d.scale.y = scale.y;
-		object3d.scale.z = scale.z;
+	constructor() {
+		this._ecs = null;
 	}
 
-};
+	setEcs(orchestrator) {
+		this._ecs = orchestrator;
+		this._entities = orchestrator.entities;
+	}
 
-var CameraManager = ECS.systems.CameraManager = function ( threeSceneManager ) {
-	this._renderer = renderer;
-	this._threeSceneManager = threeSceneManager;
-};
+}
 
-CameraManager.prototype = {
-	constructor: CameraManager,
+class Hierarchy {
 
-	init: function () {
-		this._changedCameraEntities = this.entities.withChanging(Camera);
-	},
+}
 
-	onChanges: function () {
-		this._changedCameraEntities.forEach( function ( entity ) {
-			var threeCamera = this._findObjectForEntity( entity );
-			if ( entity.getComponent(Camera).isActive ) {
-				this._threeActiveCamera = threeCamera;
+class ComponentQuery {
+
+}
+
+class Channel {
+
+}
+
+class SameThreadChannel {
+
+	constructor(ecs) {
+		this._ecs = ecs;
+	}
+
+	getComponent(...args) {
+		return ecs.getComponent(...args)
+	}
+
+	addComponent(...args) {
+		return ecs.addComponent(...args)
+	}
+
+	updateComponent(...args) {
+		return ecs.updateComponent(...args)
+	}
+
+}
+
+class CartesianSpace extends System {
+
+	constructor() {
+		super();
+		this.threeNodes = new Map();
+		this._threeScene = new THREE.Scene();
+	}
+
+	init() {
+		this._ecs.observeEntities(
+			this._entities.changing(Position, Rotation, Scale),
+			this._updateNodes, this
+		);
+		this._ecs.observeHierarchy(
+			'default',
+			this._buildScene, this
+		);
+	}
+
+	getThreeScene() {
+		return this._threeScene;
+	}
+
+	_updateNodes(modifiedEntities) {
+		modifiedEntities.forEach(entity => this._updateNode(entity));
+	}
+
+	_buildScene(changes) {
+		changes.forEach(change => {
+			const { operation, entity, parent } = change;
+			if (operation === 'added') {
+				this._addToScene(entity, parent);
 			}
-		}, this );
-	},
-
-	getThreeCamera: function () {
-		return this._threeActiveCamera;
+		});
 	}
-};
 
-var ThreeRenderer = ECS.systems.ThreeRenderer = function ( renderer, threeSceneManager, threeCameraManager ) {
-	this._renderer = renderer;
-	this._threeSceneManager = threeSceneManager;
-	this._threeCameraManager = threeCameraManager;
-};
-
-ThreeRenderer.prototype = {
-	constructor: ThreeRenderer,
-
-	onTick: function ( timestamp ) {
-		var scene = this._threeSceneManager.getThreeScene();
-		var camera = this._threeCameraManager.getThreeCamera();
-		renderer.render( scene, camera );
+	_updateNode(entity) {
+		const position = this._ecs.getComponent(Position, entity);
+		const rotation = this._ecs.getComponent(Rotation, entity);
+		const scale = this._ecs.getComponent(Scale, entity);
+		const node = this.threeNodes[entity];
+		if (position) {
+			node.position.x = position.x;
+			node.position.y = position.y;
+			node.position.z = position.z;
+		}
+		if (rotation) {
+			node.rotation.x = rotation.x;
+			node.rotation.y = rotation.y;
+			node.rotation.z = rotation.z;
+		}
+		if (scale) {
+			node.scale.x = scale.x;
+			node.scale.y = scale.y;
+			node.scale.z = scale.z;
+		}
 	}
-};
+
+	_addToScene(entity, parent) {
+		const root = parent ? this.threeNodes[parent] : this._threeScene;
+		const node = new THREE.Group();
+		root.add(node);
+		this.threeNodes[entity] = node;
+	}
+}
+
+class CameraManager extends System {
+
+	constructor(space) {
+		super();
+		this._threeCamera = null;
+		this._space = space;
+	}
+
+	init() {
+		this._ecs.observeEntities(
+			this._entities.changing(PerspectiveCamera),
+			this._updateCamera, this
+		);
+	}
+
+	getThreeCamera() {
+		return this._threeCamera;
+	}
+
+	_updateCamera(entities) {
+		entities.forEach(entity => {
+			const group = this._space.threeNodes[entity];
+			const camera = this._ecs.getComponent(Camera, entity);
+			this._threeCamera = new THREE.Camera(
+				camera.fov, camera.aspect,
+				camera.near, camera.far
+			);
+			group.add(this._threeCamera);
+		});
+	}
+
+}
+
+class ThreeRenderer extends System {
+
+	constructor(threeRenderer, sceneHolder, cameraHolder) {
+		super();
+		this._renderer = threeRenderer;
+		this._sceneHolder = sceneHolder;
+		this._cameraHolder = cameraHolder;
+	}
+
+	init() {
+		this._ecs.onTick(this._tick, this);
+	}
+
+	_tick() {
+		const scene = this._sceneHolder.getThreeScene();
+		const camera = this._cameraHolder.getThreeCamera();
+		this._renderer.render(scene, camera);
+	}
+
+}
+
+class Meshes extends System {
+
+	constructor(space) {
+		super();
+		this._space = space;
+	}
+
+	init() {
+		this._ecs.observeEntities(
+			this._entities.changing(Mesh, Geometry, Material),
+			this._buildGeometry, this
+		);
+	}
+
+	_buildGeometry(entities) {
+		entities.forEach(entity => {
+			const group = this._space.threeNodes[entity];
+			const geometry = this._ecs.getComponent(Geometry, entity);
+			const material = this._ecs.getComponent(Material, entity);
+			const threeMesh = new THREE.Mesh(
+				this._threeGeometryFromComponent(geometry),
+				this._threeMaterialFromComponent(material)
+			);
+			group.add(threeMesh);
+		});
+	}
+
+}
+
+class Animator extends System {
+
+	constructor(space) {
+		super();
+		this._space = space;
+	}
+
+	init() {
+		this._animated = this.entities.with(RotationSpeed, Rotation);
+		this._ecs.onTick(this._animate, this);
+	}
+
+	_animate() {
+		this._animated.forEach(entity => {
+			this._ecs.updateComponent(Rotation, entity, rotation => {
+				const speed = this._ecs.getComponent(RotationSpeed, entity);
+				rotation.x += speed.x;
+				rotation.y += speed.y;
+				rotation.z += speed.z;
+			});
+		});
+	}
+}
+
+class Camera extends Component {
+
+}
+
+class PerspectiveCamera extends Camera {
+
+	constructor(fov, aspect, near, fav) {
+		super();
+		this.fov = fov;
+		this.aspect = aspect;
+		this.near = near;
+		this.far = far;
+	}
+
+}
+
+class Material extends Component {
+
+}
+
+class MeshNormalMaterial extends Material {
+
+}
+
+class Geometry extends Component {
+
+}
+
+class BoxGeometry extends Geometry {
+
+	constructor(width, height, depth) {
+		super();
+		this.width = width;
+		this.height = height;
+		this.depth = depth;
+	}
+
+}
+
+class Position extends Component {
+
+	constructor(...args) {
+		super();
+		vec3ArgsToObject(this, ...args);
+	}
+
+}
+
+class Rotation extends Component {
+
+	constructor(...args) {
+		super();
+		vec3ArgsToObject(this, ...args);
+	}
+
+}
+
+class Scale extends Component {
+
+	constructor(...args) {
+		super();
+		vec3ArgsToObject(this, ...args);
+	}
+
+}
+
+function vec3ArgsToObject(obj, x, y, z) {
+	obj.x = x;
+	obj.y = y;
+	obj.z = z;
+}

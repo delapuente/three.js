@@ -49,24 +49,26 @@
 
 				ecs = new ECS.Ecs();
 				//scene.addSystem( new CustomAnimation() );
-				var cartesianSpace = new ECS.systems.CartesianSpace();
-				var cameraManager = new ECS.systems.CameraManager();
-				var threeRenderer = new ECS.systems.ThreeRenderer( renderer, cartesianSpace, cameraManager );
+				var cartesianSpace = new CartesianSpace();
+				var cameraManager = new CameraManager();
+				var meshes = new Meshes();
+				var threeRenderer = new ThreeRenderer( renderer, cartesianSpace, cameraManager );
 
-				scene.registerSystem( cartesianSpace );
-				scene.registerSystem( cameraManager );
-				scene.registerSystem( threeRenderer );
+				ecs.registerSystem( cartesianSpace );
+				ecs.registerSystem( cameraManager );
+				ecs.registerSystem( meshes );
+				ecs.registerSystem( threeRenderer );
 
 				camera = new ECS.Entity();
-				ecs.addComponent( camera, new ECS.components.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 10 ) );
-				ecs.addComponent( camera, new ECS.components.Position( 0, 0, 1 ) );
+				ecs.addComponent( camera, new PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 10 ) );
+				ecs.addComponent( camera, new Position( 0, 0, 1 ) );
 
 				mesh = new ECS.Entity();
-				ecs.addComponent( mesh, new ECS.components.Position() );
-				ecs.addComponent( mesh, new ECS.components.Rotation() );
-				ecs.addComponent( mesh, new ECS.components.Mesh() );
-				ecs.addComponent( mesh, new ECS.components.BoxGeometry( 0.2, 0.2, 0.2 ) );
-				ecs.addComponent( mesh, new ECS.components.MeshNormalMaterial() );
+				ecs.addComponent( mesh, new Position() );
+				ecs.addComponent( mesh, new Rotation() );
+				ecs.addComponent( mesh, new Mesh() );
+				ecs.addComponent( mesh, new BoxGeometry( 0.2, 0.2, 0.2 ) );
+				ecs.addComponent( mesh, new MeshNormalMaterial() );
 				//mesh.addComponent( new RotationSpeeds( 0.01, 0.02, 0 ) );
 
 				scene.add( camera );
