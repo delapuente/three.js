@@ -36,8 +36,7 @@
 
 		<script>
 
-			var ECS = THREE.ECS;
-			var camera, ecs, renderer;
+			var camera, ecs, renderer, scene;
 			var geometry, material, mesh;
 
 			init();
@@ -47,32 +46,46 @@
 				renderer = new THREE.WebGLRenderer( { antialias: true } );
 				renderer.setSize( window.innerWidth, window.innerHeight );
 
-				ecs = new ECS.Ecs();
-				//scene.addSystem( new CustomAnimation() );
+				ecs = new Ecs();
 				var cartesianSpace = new CartesianSpace();
-				var cameraManager = new CameraManager();
-				var meshes = new Meshes();
+				var cameraManager = new CameraManager(cartesianSpace);
+				var meshes = new Meshes(cartesianSpace);
 				var threeRenderer = new ThreeRenderer( renderer, cartesianSpace, cameraManager );
 
 				ecs.registerSystem( cartesianSpace );
 				ecs.registerSystem( cameraManager );
 				ecs.registerSystem( meshes );
 				ecs.registerSystem( threeRenderer );
+				ecs.registerSystem( new Animator() );
 
-				camera = new ECS.Entity();
+				camera = new Entity();
 				ecs.addComponent( camera, new PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 10 ) );
-				ecs.addComponent( camera, new Position( 0, 0, 1 ) );
+				ecs.addComponent( camera, new Position( 0, 0, 2 ) );
 
-				mesh = new ECS.Entity();
+				mesh = new Entity();
 				ecs.addComponent( mesh, new Position() );
 				ecs.addComponent( mesh, new Rotation() );
 				ecs.addComponent( mesh, new Mesh() );
-				ecs.addComponent( mesh, new BoxGeometry( 0.2, 0.2, 0.2 ) );
+				ecs.addComponent( mesh, new BoxGeometry( 1, 1, 1 ) );
 				ecs.addComponent( mesh, new MeshNormalMaterial() );
-				//mesh.addComponent( new RotationSpeeds( 0.01, 0.02, 0 ) );
+				ecs.addComponent( mesh, new RotationSpeed( 0.01, 0.02, 0 ) );
 
-				scene.add( camera );
-				scene.add( mesh );
+				ecs.add( camera );
+				ecs.add( mesh );
+
+				// scene = new THREE.Scene();
+				// var group = new THREE.Group();
+				// group.add(new THREE.Mesh(
+				// 	new THREE.BoxGeometry(1, 1, 1),
+				// 	new THREE.MeshNormalMaterial()
+				// ));
+				// var group2 = new THREE.Group();
+				// group2.position.z = 2;
+				// camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 10 );
+				// group2.add(camera);
+				// //camera.position.z = 2;
+				// scene.add(group2);
+				// scene.add(group);
 
 				document.body.appendChild( renderer.domElement );
 
@@ -82,6 +95,7 @@
 
 				requestAnimationFrame( animate );
 
+				//renderer.render(scene, camera);
 				ecs.tick(timestamp);
 
 			}
